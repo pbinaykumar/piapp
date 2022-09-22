@@ -1,13 +1,14 @@
 import { View, Text } from 'react-native'
-import React from 'react'
+import React, { useEffect } from 'react'
 import FindLocalDevices from 'react-native-find-local-devices';
 import { DeviceEventEmitter } from 'react-native';
 import { useDispatch } from 'react-redux';
-import { selectedIps } from '../redux/action';
+import { selectedIps, setCurrentIp } from '../redux/action';
 
 export default function Intro({ navigation }) {
 
     const dispatch=useDispatch()
+
     DeviceEventEmitter.addListener('NEW_DEVICE_FOUND', (device) => {
     console.log(`NEW DEVICE FOUND: ${device.ipAddress}:${device.port}`);
     // This listener will be activated at the moment when the device has been found.
@@ -54,6 +55,10 @@ export default function Intro({ navigation }) {
     }
   );
 
+  useEffect(()=>{
+    // dispatch(setCurrentIp('192.168.29.77'))
+        navigation.navigate('Home')
+  })
   return (
     <View>
       <Text>Intro</Text>

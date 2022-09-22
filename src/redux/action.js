@@ -7,3 +7,12 @@ export const selectedIps = (ips) => {
   };
 };
 
+export const setCurrentIp = (ip) => {
+  return (dispatch) => {
+    dispatch({
+      type: "ip",
+      payload: ip,
+    });
+  };
+};
+
