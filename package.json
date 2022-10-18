@@ -21,6 +21,7 @@
     "react-redux": "^8.0.2",
     "redux-persist": "^6.0.0",
     "redux-thunk": "^2.4.1",
+    "use-long-press": "^2.0.2",
     "websocket": "^1.0.34"
   },
   "devDependencies": {

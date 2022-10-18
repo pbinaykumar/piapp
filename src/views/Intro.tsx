@@ -1,67 +1,105 @@
-import { View, Text } from 'react-native'
-import React, { useEffect } from 'react'
+import {View, Text, TouchableOpacity, TextInput} from 'react-native';
+import React, {useEffect, useState} from 'react';
 import FindLocalDevices from 'react-native-find-local-devices';
-import { DeviceEventEmitter } from 'react-native';
-import { useDispatch } from 'react-redux';
-import { selectedIps, setCurrentIp } from '../redux/action';
+import {DeviceEventEmitter} from 'react-native';
+import {useDispatch} from 'react-redux';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import {w3cwebsocket as W3CWebSocket} from 'websocket';
+export interface ShavedIpsDTO {
+  ip: string;
+  name: string;
+}
+export default function Intro({navigation}) {
+  const [currentIp, setCurrentIp] = useState<string>('');
+  const [manualIp, setManualIp] = useState<string>('');
+  const [savedIps, setSavedIps] = useState<Array<ShavedIpsDTO>>([]);
+  const chatSocket = new W3CWebSocket(`ws://${currentIp}/ws`);
 
-export default function Intro({ navigation }) {
+  DeviceEventEmitter.addListener('NEW_DEVICE_FOUND', _device => {console.log(_device,'bv')});
+  DeviceEventEmitter.addListener('RESULTS', _devices => {console.log(_devices,'res')});
+  DeviceEventEmitter.addListener('CHECK', _device => {});
+  DeviceEventEmitter.addListener('NO_DEVICES', () => {});
+  DeviceEventEmitter.addListener('NO_PORTS', () => {});
+  DeviceEventEmitter.addListener('CONNECTION_ERROR', _error => {});
 
-    const dispatch=useDispatch()
-
-    DeviceEventEmitter.addListener('NEW_DEVICE_FOUND', (device) => {
-    console.log(`NEW DEVICE FOUND: ${device.ipAddress}:${device.port}`);
-    // This listener will be activated at the moment when the device has been found.
-    // FORMAT: {ipAddress: "192.168.1.66", port: 70}
-  });
- 
-  DeviceEventEmitter.addListener('RESULTS', (devices) => {
-    console.log(devices)
-    // ALL OF RESULTS when discovering has been finished.
-    // FORMAT: [{ipAddress: "192.168.1.66", port: 70}, {ipAddress: "192.168.1.69", port: 85}]
-  });
- 
-  DeviceEventEmitter.addListener('CHECK', (device) => {
-    // This listener will be activated in that moment when package checking a device.
-    // FORMAT: {ipAddress: "192.168.1.65", port: 70}
-  });
- 
-  DeviceEventEmitter.addListener('NO_DEVICES', () => {
-    // This listener will be activated at the end of discovering.
-  });
- 
-  DeviceEventEmitter.addListener('NO_PORTS', () => {
-    // This listener will be activated if you don't pass any ports to the package.
-  });
- 
-  DeviceEventEmitter.addListener('CONNECTION_ERROR', (error) => {
-    // Handle error messages for each socket connection
-    // console.log(error.message);
-  });
- 
-//   Getting local devices which have active socket server on the following ports:
   FindLocalDevices.getLocalDevices({
-    ports: [70, 85, 1200,22],
-    timeout: 40
+    ports: [70, 85, 1200, 22,80],
+    timeout: 40,
   });
   const newDeviceFoundSubscription = DeviceEventEmitter.addListener(
     'NEW_DEVICE_FOUND',
-    (device) => {
-        console.log(device,'row data');
+    device => {
+      console.log(device, 'row data');
       if (device.ipAddress && device.port) {
-        dispatch(selectedIps([device.ipAddress]))
-        navigation.navigate('Home')
+        setCurrentIp(device.ipAddress);
       }
-    }
+    },
   );
 
-  useEffect(()=>{
-    // dispatch(setCurrentIp('192.168.29.77'))
-        navigation.navigate('Home')
-  })
+  const getStorageCurrentIp = async () => {
+    const ip: any = await AsyncStorage.getItem('currentIp');
+    ip && setCurrentIp(ip);
+    const ips = await AsyncStorage.getItem('savedIps');
+    if (ips) {
+      setSavedIps(JSON.parse(ips));
+    }
+  };
+
+  useEffect(() => {
+    getStorageCurrentIp();
+  }, []);
+  try {
+    if (chatSocket) {
+      chatSocket.onopen = function (e: any) {
+        if (currentIp) {
+          AsyncStorage.setItem('currentIp', currentIp);
+          const checkExist = savedIps.filter(object => object.ip === currentIp);
+          if (checkExist && checkExist.length !== 0) {
+            null;
+          } else {
+            AsyncStorage.setItem(
+              'savedIps',
+              JSON.stringify([
+                ...savedIps,
+                {ip: currentIp, name: 'kichi nuhe'},
+              ]),
+            );
+          }
+          navigation.navigate('Home');
+        }
+      };
+    }
+  } catch {
+    null;
+  }
+  const manualEnterIp=()=>{
+    setCurrentIp(manualIp)
+
+  }
   return (
-    <View>
-      <Text>Intro</Text>
+    <View style={{backgroundColor: '#073787', flex: 1}}>
+      <View>
+        <Text>Loading</Text>
+      </View>
+      <View>
+      <View>
+            <TextInput
+              onChangeText={val => setManualIp(val)}
+              value={manualIp}
+            />
+            <TouchableOpacity onPress={()=>manualEnterIp()}><Text>Connect</Text></TouchableOpacity>
+          </View>
+        <View>
+          {savedIps.map(obj => {
+            return (
+              <TouchableOpacity onPress={() => setCurrentIp(obj.ip)}>
+                <Text>{obj.ip}</Text>
+              </TouchableOpacity>
+            );
+          })}
+          </View>
+          
+      </View>
     </View>
-  )
+  );
 }
